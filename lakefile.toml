@@ -1,0 +1,15 @@
+name = "hex-gfq-ring"
+defaultTargets = ["HexGFqRing"]
+
+leanOptions = [
+  { name = "doc.verso", value = true },
+  { name = "doc.verso.suggestions", value = false },
+]
+
+[[require]]
+name = "HexPolyFp"
+git = "https://github.com/leanprover/hex-poly-fp.git"
+rev = "963efabfbd17064105e4fd593d5a9136ae23af61"
+
+[[lean_lib]]
+name = "HexGFqRing"
