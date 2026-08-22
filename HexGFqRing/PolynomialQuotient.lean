@@ -69,9 +69,32 @@ theorem reduceMod_eq_self_of_degree_lt (f g : FpPoly p) :
 def IsReduced (f : FpPoly p) (g : FpPoly p) : Prop :=
   ∃ h : FpPoly p, g = reduceMod f h
 
-/-- Executable quotient elements represented by canonical reduced polynomials. -/
-abbrev PolyQuotient (f : FpPoly p) (_hf : 0 < FpPoly.degree f) :=
+/-- Executable quotient elements, carrying the reducedness invariant in the type.
+
+A value of this type is a polynomial *together with* a proof that it lies in the
+image of `reduceMod f`, so a raw `FpPoly p` cannot be supplied where one of these
+is expected.
+
+The modulus is required to be prime, which guarantees the representative is
+canonical for every nonconstant `f`: `reduceMod` is a genuine remainder only
+when the leading coefficient it divides by is a unit, and over a prime modulus
+every nonzero coefficient is. Drop the hypothesis and canonicality can fail. At
+`p = 4` with `f = 2X` the division step subtracts zero and leaves the remainder
+untouched, so `f` and `0` are congruent yet both reduced and distinct.
+`isReduced_iff_degree_lt` states the contract this hypothesis buys.
+
+Primality is sufficient, not necessary: a monic `f` needs no coefficient
+inversion and would be canonical over any modulus. The uniform prime hypothesis
+is the deliberate choice here, since every modulus this library serves is over a
+prime field anyway.
+
+`reduceMod` itself, and its degree-short-circuit lemmas above, stay general; it
+is the quotient *type* that is restricted, because that is what carries the
+canonicality claim. -/
+abbrev PolyQuotient [ZMod64.PrimeModulus p] (f : FpPoly p) (_hf : 0 < FpPoly.degree f) :=
   { g : FpPoly p // IsReduced f g }
+
+variable [ZMod64.PrimeModulus p]
 
 /-- Inject a polynomial into the quotient by reducing it modulo `f`. -/
 @[expose]
@@ -126,10 +149,6 @@ instance {f : FpPoly p} {hf : 0 < FpPoly.degree f} : DecidableEq (PolyQuotient f
   · intro hx hzero
     exact hx ((eq_zero_iff_repr_eq_zero x).1 hzero)
 
--- The remaining `reduceMod` algebra rests on `DensePoly` division laws that
--- require `ZMod64 p` to be a field, so from here the modulus must be prime.
-variable [ZMod64.PrimeModulus p]
-
 /-- Canonical representatives have degree strictly below the modulus. -/
 @[simp] theorem degree_repr_lt_degree {f : FpPoly p} {hf : 0 < FpPoly.degree f}
     (x : PolyQuotient f hf) :
@@ -137,6 +156,25 @@ variable [ZMod64.PrimeModulus p]
   rcases x.2 with ⟨g, hx⟩
   simpa [repr, hx, IsReduced, reduceMod, FpPoly.degree, DensePoly.mod_eq_divMod]
     using DensePoly.mod_degree_lt_of_pos_degree g f hf
+
+/-- Reducedness is exactly a degree bound, so the representative a
+{name}`PolyQuotient` stores is the unique one of its residue class.
+
+This is the theorem behind the "equality is equality of canonical
+representatives" contract, and it is where primality is load-bearing. The
+forward direction is the one that needs it: a reduced polynomial is only known
+to sit below the modulus because the remainder-degree law holds over a field,
+and that law is what fails when the leading coefficient of `f` is not a unit.
+The converse is `reduceMod_eq_self_of_degree_lt`, which holds generally. -/
+theorem isReduced_iff_degree_lt {f : FpPoly p} (hf : 0 < FpPoly.degree f)
+    (g : FpPoly p) :
+    IsReduced f g ↔ FpPoly.degree g < FpPoly.degree f := by
+  constructor
+  · rintro ⟨h, rfl⟩
+    simpa [IsReduced, reduceMod, FpPoly.degree, DensePoly.mod_eq_divMod]
+      using DensePoly.mod_degree_lt_of_pos_degree h f hf
+  · intro hdeg
+    exact ⟨g, (reduceMod_eq_self_of_degree_lt f g hdeg).symm⟩
 
 /-- Applying {name}`reduceMod` to a reduced representative is a no-op. -/
 @[simp, grind =] theorem reduceMod_idem (f : FpPoly p) (g : FpPoly p) :

@@ -9,7 +9,7 @@ leanOptions = [
 [[require]]
 name = "HexPolyFp"
 git = "https://github.com/leanprover/hex-poly-fp.git"
-rev = "63d11e9652020e83629808977bff618e99d21234"
+rev = "3d2cc1c30b0e17dfec35858e9d5fa8d75e1f241b"
 
 [[lean_lib]]
 name = "HexGFqRing"
