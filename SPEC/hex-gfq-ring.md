@@ -62,6 +62,37 @@ supports a field structure; that extension belongs to hex-gfq-field.
 - `reduceMod f (a * b) = reduceMod f (reduceMod f a * reduceMod f b)`
 - Ring axioms for `PolyQuotient p f hf`
 
+## Fast-arithmetic adoption
+
+The quotient multiplication operation now calls `FpPoly.mulFast`; its
+coefficient-owner dispatcher retains schoolbook multiplication below 16
+coefficients and selects packed or NTT-backed multiplication above the measured
+boundaries. Square-and-multiply exponentiation inherits that choice. Canonical
+representatives and every `reduceMod` theorem are unchanged because
+`FpPoly.mulFast_eq` identifies the selected product with `DensePoly.mul`.
+
+Three warm outer trials on `chungus2`, Lean `4.34.0-rc2`, over `F_65537` give
+these representative medians; all result hashes agree:
+
+| operation | degree | retained | selected/candidate |
+|---|---:|---:|---:|
+| quotient multiplication | 32 | 44.670 µs | 39.602 µs |
+| quotient multiplication | 128 | 641.710 µs | 499.139 µs |
+| quotient power | 32 | 467.483 µs | 388.016 µs |
+| quotient power | 128 | 9.359 ms | 6.688 ms |
+| quotient power | 256 | 39.840 ms | 30.304 ms |
+| one-shot reduction | 32 | 28.308 µs | 2.879 ms |
+| one-shot reduction | 256 | 1.495 ms | 74.109 ms |
+
+The first two operation families adopt fast multiplication. The one-shot
+Newton `DivPlan` candidate loses by a wide margin on every rung from 32 through
+256, so `reduceMod` remains the monic long-division implementation. Reproduce
+the screens with `lake exe hexgfqring_bench compare` and the paired
+`runMulSchoolbookChecksum`/`runMulChecksum`,
+`runPowSchoolbookChecksum`/`runPowChecksum`, and
+`runReduceModChecksum`/`runReduceFastChecksum` targets, adding
+`--outer-trials 3`.
+
 ## External comparators
 
 No external comparator is required.
